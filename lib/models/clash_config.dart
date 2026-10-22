@@ -2,6 +2,7 @@
 
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'generated/clash_config.freezed.dart';
@@ -348,12 +349,18 @@ extension TunExt on Tun {
     }
 
     if (bypassPrivateRoute) {
-      return copyWith(
-        autoRoute: true,
-        routeAddress: List<String>.from(
-          bypassPrivateRouteAddress ?? defaultBypassPrivateRouteAddress,
-        ),
+      final routes = List<String>.from(
+        bypassPrivateRouteAddress ?? defaultBypassPrivateRouteAddress,
       );
+      if (system.isAndroid &&
+          routeExcludeAddress.isEmpty &&
+          listEquals(routes, defaultBypassPrivateRouteAddress)) {
+        // Tethering probes 0.0.0.0 with a longest-prefix route lookup.
+        // Include only that host, not /0, to preserve private-network bypass.
+        // Leave custom inclusion lists and explicit exclusions unchanged.
+        routes.add('0.0.0.0/32');
+      }
+      return copyWith(autoRoute: true, routeAddress: routes);
     }
 
     return copyWith(autoRoute: true, routeAddress: []);
